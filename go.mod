@@ -3,6 +3,8 @@ module github.com/acentior/chat-app
 go 1.17
 
 require (
+	cloud.google.com/go/firestore v1.6.1
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/gofiber/fiber/v2 v2.23.0
 	github.com/gofiber/websocket/v2 v2.0.14
 	github.com/gomodule/redigo v1.8.6
@@ -13,19 +15,15 @@ require (
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
-	cloud.google.com/go/firestore v1.6.1 // indirect
 	cloud.google.com/go/storage v1.18.2 // indirect
-	firebase.google.com/go v3.13.0+incompatible // indirect
 	github.com/andybalholm/brotli v1.0.2 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
 	github.com/cncf/xds/go v0.0.0-20211216145620-d92e9ce0af51 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/envoyproxy/go-control-plane v0.10.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.6.2 // indirect
 	github.com/fasthttp/websocket v1.4.3-rc.10 // indirect
-	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect

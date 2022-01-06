@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/acentior/chat-app/firebase"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 	"github.com/gomodule/redigo/redis"
-	//"github.com/acentior/chat-app/firebase"
 )
 
 func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
-	// client := firebase.NewFirestore()
+	client := firebase.NewFirestore()
 
 	app := fiber.New()
 
@@ -24,6 +24,7 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 		return fiber.ErrUpgradeRequired
 	})
 
+	app.Static("/", "./static")
 	app.Get("/", func(c *fiber.Ctx) error {
 		c.WriteString("This works i believe")
 		return nil

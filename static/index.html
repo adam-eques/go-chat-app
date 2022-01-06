@@ -1,80 +1,132 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat append-We Chat Room</title>
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <title>Chat</title>
+  <!-- Load required Bootstrap and BootstrapVue CSS -->
+  <link 
+  type="text/css" 
+  rel="stylesheet" 
+  href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" 
+  />
+  <link 
+  type="text/css" 
+  rel="stylesheet" 
+  href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" 
+  />
+  <link type="text/css" rel="stylesheet" href="assets/style.css" />
+  <!-- Load polyfills to support older browsers -->
+  <script
+    src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CIntersectionObserver"
+    crossorigin="anonymous"
+    ></script>
 
-    <!-- Custom css for chat pages -->
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/chat_style.css') }}">
-    <link rel="shortcut icon" type="image/jpg" href="{{ url_for('static',filename='images/favicon.jpg') }}">
+  <!-- Load Vue followed by BootstrapVue -->
+  <script src="https://unpkg.com/vue"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
 </head>
+
 <body>
-    <!-- Flash error messages -->
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <p class=formError>{{ messages[0] }}</p>
-        {% endif %}
-    {% endwith %}
-
-<div class="wrapper">
-    <nav class="navbar navbar-expand-sm navbar-light fixed-top" style="background-color: #4a535e">
-        <div class="container-fluid">
-            <div id="show-sidebar-button" class="cursor-pointer">
-                <i class="fas fa-plus-circle "></i>
-                <span>Rooms</span>
+  <div id="app">
+    <div class="container h-100">
+      <div class="row justify-content-center h-100">
+        <div class="col-12 form" v-if="!ws">
+          <h2>Anonymous log-in</h2>
+          <div class="input-group">
+            <input v-model="user.name" class="form-control name" placeholder="Please fill in your (nick)name"
+              @keyup.enter.exact="connect"></input>
+            <div class="input-group-append">
+              <span class="input-group-text send_btn" @click="connect">
+                >
+              </span>
             </div>
+          </div>
+          <h2>Registered users</h2>
 
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <style>
-                    h5 {
-                      color: rgb(255, 255, 255);
-                    }
-                </style>
-                <h5>🥳Hello There!!!</h5>
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <a id="logout-btn" class="nav-link" href="{{ url_for('logout') }}"><span style="color: #ffffff">Logout</span></a>
-                    </li>
-                </ul>
+          <div class="input-group">
+            <input v-model="user.username" class="form-control username" placeholder="username"></input>
+
+            <input v-model="user.password" type="password" class="form-control password" placeholder="password"></input>
+
+            <div class="input-group-append">
+              <span class="input-group-text send_btn" @click="login">
+                >
+              </span>
             </div>
+          </div>
+
+          <div class="alert alert-danger" role="alert" v-show="loginError">
+            {{loginError}}
+          </div>
+
         </div>
-    </nav>
-    <div id="main-section">
-        <nav id="sidebar">
-            <h4>Rooms</h4>
-            {% for room in rooms %}
-                <p id="{{ room|title }}" class="select-room cursor-pointer">{{ room|title }}</p>
-            {% endfor %}
-        </nav>
-        <div id="rightside-pannel">
-            <div id="display-message-section">
+        <div class="col-12 ">
+          <div class="row">
+            <div class="col-2 card profile" v-for="user in users" :key="user.id">
+              <div class="card-header">{{user.name}}</div>
+              <div class="card-body">
+                <button class="btn btn-primary" @click="joinPrivateRoom(user)">Send Message</button>
+              </div>
             </div>
-           <div id="input-area" class="input-group mb-3">
-                <input type="text" id="user_message" class="form-control" placeholder="Type here..." aria-label="Type a message" aria-describedby="basic-addon2" autocomplete="off">
-                <div class="input-group-append">
-                    <button id="send_message" class="btn btn-primary" type="button">SEND <i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+        <div class="col-12 room" v-if="ws != null">
+          <div class="input-group">
+            <input
+             v-model="roomInput"
+             class="form-control name" 
+             placeholder="Type the room you want to join"
+              @keyup.enter.exact="joinRoom"
+              ></input>
+            <div class="input-group-append">
+              <span class="input-group-text send_btn" @click="joinRoom">
+                >
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat" v-for="(room, key) in rooms" :key="key">
+          <div class="card">
+            <div class="card-header msg_head">
+              <div class="d-flex bd-highlight justify-content-center">
+                {{room.name}}
+                <span class="card-close" @click="leaveRoom(room)">leave</span>
+              </div>
+            </div>
+            <div class="card-body msg_card_body">
+              <div 
+              v-for="(message, key) in room.messages"
+               :key="key" 
+               class="d-flex justify-content-start mb-4"
+               >
+                <div class="msg_cotainer">
+                  {{message.message}}
+                  <span class="msg_name" v-if="message.sender">{{message.sender.name}}</span>
                 </div>
+              </div>
             </div>
+            <div class="card-footer">
+              <div class="input-group">
+                <textarea 
+                v-model="room.newMessage" 
+                name=""
+                class="form-control type_msg"
+                placeholder="Type your message..."
+                  @keyup.enter.exact="sendMessage(room)"
+                  ></textarea>
+                <div class="input-group-append">
+                  <span class="input-group-text send_btn" @click="sendMessage(room)">></span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-</div>
-    <span id="get-username">{{ username }}</span>
-
-    <script src="{{ url_for('static', filename='scripts/chat_page.js') }}"></script>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='scripts/socketio.js') }}"></script>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-    <!-- Font Awesome JS -->
-    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/solid.js" integrity="sha384-tzzSw1/Vo+0N5UhStP3bvwWPq+uvzCMfrN1fEFe+xBmv1C/AtVX5K0uZtmcHitFZ" crossorigin="anonymous"></script>
-    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/fontawesome.js" integrity="sha384-6OIrr52G08NpOFSZdxxz1xdNSndlD4vdcf/q2myIUVO0VsqaGHJsB0RaBE01VTOY" crossorigin="anonymous"></script>
-
+  </div>
 </body>
+
+<script src="assets/app.js"></script>
 </html>

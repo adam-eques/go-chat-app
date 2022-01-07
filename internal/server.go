@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,8 +12,9 @@ import (
 )
 
 func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
-	client := firebase.NewFirestore()
+	f := firebase.NewFirestore()
 
+	ctx := context.Background()
 	app := fiber.New()
 
 	app.Use("/chat", func(c *fiber.Ctx) error {
@@ -51,6 +53,16 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 
 			switch mt {
 			case websocket.TextMessage:
+				storemsg := Message{
+					User: c.Params("id"),
+					Data: msg,
+				}
+
+				_, err := f.Client.Collection("chat-app").Doc("messages").Set(ctx, storemsg)
+				if err != nil {
+					fmt.Println("Unable to save message firestore")
+				}
+
 				c.WriteMessage(mt, msg)
 				if err != nil {
 					fmt.Println("Unable to add message to firestore")

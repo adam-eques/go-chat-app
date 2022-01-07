@@ -5,6 +5,7 @@ import (
 	"log"
 
 	firebase "firebase.google.com/go"
+	"google.golang.org/api/option"
 )
 
 var (
@@ -18,7 +19,8 @@ type Firebaseapp struct {
 func NewFirebaseApp() *Firebaseapp {
 	ctx := context.Background()
 	conf := &firebase.Config{ProjectID: projectid}
-	app, err := firebase.NewApp(ctx, conf)
+	opt := option.WithCredentialsFile("chat-app-e2953-firebase-adminsdk-vjtvt-8710fa5a0a.json")
+	app, err := firebase.NewApp(ctx, conf, opt)
 	if err != nil {
 		log.Fatalln(err)
 	}

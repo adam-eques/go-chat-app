@@ -21,14 +21,14 @@ func init() {
 	var err error
 	waitingMessage, err = json.Marshal(internal.Message{
 		User: "system",
-		Data: "Waiting for redis to be available. Messaging won't work until redis is available",
+		Data: []byte("Waiting for redis to be available. Messaging won't work until redis is available"),
 	})
 	if err != nil {
 		panic(err)
 	}
 	availableMessage, err = json.Marshal(internal.Message{
 		User: "system",
-		Data: "Redis is now available & messaging is now possible",
+		Data: []byte("Redis is now available & messaging is now possible"),
 	})
 	if err != nil {
 		panic(err)

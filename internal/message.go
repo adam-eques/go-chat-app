@@ -9,7 +9,7 @@ import (
 
 type Message struct {
 	User      string `json:"user"`
-	Data      string `json:"data"`
+	Data      []byte `json:"data"`
 	TimeStamp time.Time
 }
 
@@ -20,7 +20,7 @@ func validate(data []byte) (Message, error) {
 		return msg, errors.Wrap(err, "Cannot handle message")
 	}
 
-	if msg.User == "" && msg.Data == " " {
+	if msg.User == "" {
 		return msg, errors.New("Message has not user nor data")
 	}
 

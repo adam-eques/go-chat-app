@@ -8,19 +8,20 @@ import (
 )
 
 type Firestore struct {
-	client *firestore.Client
+	Client *firestore.Client
 }
 
 func NewFirestore() Firestore {
 	a := NewFirebaseApp()
-	client, err := a.App.Firestore(context.Background())
+	ctx := context.Background()
+	client, err := a.App.Firestore(ctx)
 	if err != nil {
 		fmt.Println("Unable to initialize firestore")
 	}
-	return Firestore{client: client}
+	return Firestore{Client: client}
 }
 
-func (f *Firestore) Add(ctx context.Context, c string, msg []byte) error {
+/* func (f *Firestore) Add(ctx context.Context, c string, msg []byte) error {
 	_, err := f.client.Collection(c).Doc("messages").Set(ctx, map[string]interface{}{
 		"message": msg,
 	})
@@ -31,3 +32,4 @@ func (f *Firestore) Add(ctx context.Context, c string, msg []byte) error {
 
 	return nil
 }
+*/

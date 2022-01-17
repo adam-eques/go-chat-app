@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style/style.css">
+        <title>ChatApp</title>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Registered Users</h2>
+            <form action="/login" method="post">
+                <input type="text" id="email" placeholder="email">
+                <input type="text" id="password" placeholder="password">
+                <input type="hidden" id="token" name="token">
+                <input type="submit" value="log in" id="submit">
+            </form>
+        </div>
+        <script src="/js/login.js" type="module"></script>
+    </body>
+</html>

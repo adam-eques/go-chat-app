@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style/chatstyle.css">
+        <title>Chat Page</title>
+    </head>
+    <body>
+        <div id="wrapper">
+            <div id="menu">
+                <p class="welcome">Welcome, {{.User.Email}}!</p> <b></b></p>
+                <p class="logout"><a id="exit" href=".">Exit Chat</a></p>
+            </div>
+
+            <div id="chatbox"></div>
+
+            <form>
+                <input name="usermsg" type="text" id="usermsg" />
+                <input name="submitmsg" type="submit" id="submitmsg" value="Send"/>
+            </form>
+        </div>
+    </body>
+    <script src="/js/chat.js" type="module">
+    </script>
+</html>

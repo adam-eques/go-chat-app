@@ -16,6 +16,7 @@ type Firebaseapp struct {
 	App *firebase.App
 }
 
+//initialize firebase application in my project
 func NewFirebaseApp() *Firebaseapp {
 	ctx := context.Background()
 	conf := &firebase.Config{ProjectID: projectid}

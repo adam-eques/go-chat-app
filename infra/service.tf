@@ -7,7 +7,7 @@ resource "google_cloud_run_service" "default" {
     template {
         spec {
             containers {
-                image = "gcr.io/chat-app-338321/chatappserver@sha256:6f49befc253ffbe977e4dd2ccab5e35722bb2ae8abe0e9b49653221df96d2800"
+                image = "gcr.io/chat-app-338321/chatappserver@sha256:5fa656d3098e694e8148a48063b99e0668d172da09bc2a4f7207be732185e3b5"
             }
         }
 
@@ -25,20 +25,20 @@ resource "google_cloud_run_service" "default" {
     }
 }
 
-data "google_iam_policy" "noauth" {
-   binding {
-     role = "roles/run.invoker"
-     members = ["allUsers"]
-   }
- }
+# data "google_iam_policy" "noauth" {
+#    binding {
+#      role = "roles/run.invoker"
+#      members = ["allUsers"]
+#    }
+#  }
 
- resource "google_cloud_run_service_iam_policy" "noauth" {
-   location    = google_cloud_run_service.default.location
-   project     = google_cloud_run_service.default.project
-   service     = google_cloud_run_service.default.name
+#  resource "google_cloud_run_service_iam_policy" "noauth" {
+#    location    = google_cloud_run_service.default.location
+#    project     = google_cloud_run_service.default.project
+#    service     = google_cloud_run_service.default.name
 
-   policy_data = data.google_iam_policy.noauth.policy_data
-}
+#    policy_data = data.google_iam_policy.noauth.policy_data
+# }
 
 resource "google_redis_instance" "default" {
     name =  "chat-app-pubsub"
@@ -47,16 +47,12 @@ resource "google_redis_instance" "default" {
 
     location_id ="us-central1-a"
 
-   # reserved_ip_range = "192.168.0.0/29"
+    reserved_ip_range = "192.168.0.0/29"
 
-    labels = {
-      my_key    = "my_val"
-      other_key = "other_val"
-    }
 }
 
 resource "google_compute_network" "default" {
-  name                    = "cloudrun-network"
+  name                    = "cloudrun-network-1"
   provider                = google-beta
   auto_create_subnetworks = false
 }
@@ -69,6 +65,23 @@ resource "google_vpc_access_connector" "connector" {
   ip_cidr_range = "10.8.0.0/28"
   network       = google_compute_network.default.name
   depends_on    = [google_project_service.vpcaccess_api]
+}
+
+
+resource "google_compute_router" "router" {
+  name     = "router"
+  provider = google-beta
+  region   = "us-central1"
+  network  = google_compute_network.default.id
+}
+
+resource "google_compute_router_nat" "router_nat" {
+  name                               = "nat"
+  provider                           = google-beta
+  region                             = "us-central1"
+  router                             = google_compute_router.router.name
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  nat_ip_allocate_option             = "AUTO_ONLY"
 }
 
 

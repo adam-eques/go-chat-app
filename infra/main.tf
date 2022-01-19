@@ -4,6 +4,7 @@ terraform {
           source = "hashicorp/google"
           version = "~> 3.5"
       }
+
   }
 }
 provider "google" {

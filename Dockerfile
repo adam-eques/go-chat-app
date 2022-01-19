@@ -1,11 +1,14 @@
 FROM golang:1.17
 
-WORKDIR /home/acentior/Desktop/Go/chat-app
-COPY . .
+WORKDIR /chat-app
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
 RUN apt-get -y update
-RUN go install -v ./...
+COPY . .
+
 RUN go build -o chat-app
 
-CMD ./chat-app
+CMD ["./chat-app"]
 

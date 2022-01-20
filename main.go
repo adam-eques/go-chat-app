@@ -9,6 +9,7 @@ import (
 
 	"github.com/acentior/chat-app/internal"
 	"github.com/gomodule/redigo/redis"
+	"github.com/heroku/x/hredis/redigo"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
@@ -64,11 +65,11 @@ func main() {
 
 	go func() {
 		for {
-			// waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, rr.Wait)
-			// if !waited || err != nil {
-			// 	fmt.Println(err)
-			// 	log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
-			// }
+			waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, rr.Wait)
+			if !waited || err != nil {
+				fmt.Println(err)
+				log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
+			}
 			rr.Broadcast(availableMessage)
 			err = rr.Run()
 			fmt.Println("till here")
@@ -82,10 +83,10 @@ func main() {
 
 	go func() {
 		for {
-			// waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, nil)
-			// if !waited || err != nil {
-			// 	log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
-			// }
+			waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, nil)
+			if !waited || err != nil {
+				log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
+			}
 			err = rw.Run()
 			if err == nil {
 				break

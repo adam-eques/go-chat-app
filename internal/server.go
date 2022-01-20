@@ -47,7 +47,7 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 		return nil
 	})
 	app.Post("/login", handleLogin)
-	// app.Get("/retrieve", handleRetrieve)
+	app.Get("/retrieve", handleRetrieve)
 
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		var (
@@ -169,5 +169,6 @@ func handleRetrieve(c *fiber.Ctx) error {
 	for i, v := range eleMap {
 		fmt.Printf("This message sent by %v was %s", i, v)
 	}
+	fmt.Println(eleMap)
 	return nil
 }

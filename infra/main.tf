@@ -10,14 +10,14 @@ terraform {
 provider "google" {
     project = var.project
 
-    credentials = file("/home/acentior/Desktop/Go/chat-app/chat-app-338321-d86b6075c3de.json")
+    credentials = file("/home/midepeter/Desktop/Go/chat-app/chat-app-338321-d86b6075c3de.json")
     region = "us-central1"
 }
 
 
 provider "google-beta" {
 
-    credentials = file("/home/acentior/Desktop/Go/chat-app/chat-app-338321-d86b6075c3de.json")
+    credentials = file("/home/midepeter/Desktop/Go/chat-app/chat-app-338321-d86b6075c3de.json")
 
     project = var.project
 

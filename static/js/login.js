@@ -75,6 +75,8 @@ function handleSubmit(event) {
         });
       }
     });
+  } else {
+    localStorage.setItem('token', tokenInput.value);
   }
 }
 

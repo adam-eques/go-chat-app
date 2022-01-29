@@ -1,0 +1,36 @@
+.chatRoom{
+    display: flex;
+    width: 35%;
+    height: max-content;
+    flex-direction: column;
+    margin: auto;
+    outline: 1px solid black;
+}
+
+.chatRoom h2 {
+    color: white;
+    background-color: black;
+    margin-top: 0;
+    text-align: center;
+}
+
+ul {
+    list-style: none;
+    overflow-y: scroll;
+    padding: 0;
+    margin-top: 0;
+}
+
+li {
+    padding: 1rem;
+    font-weight: bold;
+    background: rgb(219, 216, 216);
+    border: 1px solid black;
+}
+
+
+li:hover{
+    background-color:rgb(116, 114, 114);
+    color:white;
+    cursor: pointer;
+}

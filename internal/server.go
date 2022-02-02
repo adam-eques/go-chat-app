@@ -62,7 +62,7 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 			msg []byte
 			err error
 		)
-		roomId := c.Params("room_id")
+		//roomId := c.Params("room_id")
 
 		rr.Register(c)
 
@@ -85,7 +85,7 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 				message := "Echo: " + string(msg)
 				c.WriteMessage(mt, []byte(message))
 
-				_, err := f.Client.Collection("chat-app").Doc(roomId).Set(ctx, storemsg)
+				_, err := f.Client.Collection("chat-app").Doc("messages").Set(ctx, storemsg)
 				if err != nil {
 					fmt.Println("Unable to save message firestore")
 				}
@@ -157,9 +157,6 @@ func createRoom(c *fiber.Ctx) error {
 
 	name := c.Body()
 
-	//new := NewRoom(string(name))
-
-	//rooms = append(rooms, &new)
 	doc := f.Client.Collection("chat-app").NewDoc()
 	doc.ID = string(name)
 	fmt.Printf("A new room was successfully created %s", doc.ID)

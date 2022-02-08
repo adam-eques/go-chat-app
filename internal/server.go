@@ -22,8 +22,8 @@ import (
 )
 
 type MsgData struct {
-	Event string
-	Data  string
+	Event string `json:"event"`
+	Data  string `json:"data"`
 }
 
 func StartServer(red *redis.Pool) {
@@ -87,16 +87,14 @@ func StartServer(red *redis.Pool) {
 			msg []byte
 			err error
 		)
-
 		rr := NewRedisReceiver(red)
+
 		rw := NewRedisWriter(red)
 
-		rr.Broadcast([]byte("The waiting message"))
-
 		roomId := c.Params("roomID")
+		go rr.Run(roomId)
 
-		rr.Run(roomId)
-		rw.Run(roomId)
+		go rw.Run(roomId)
 
 		rr.Register(c)
 
@@ -108,13 +106,12 @@ func StartServer(red *redis.Pool) {
 					break
 				}
 				log.Println("Unknown message")
+				break
 			}
-
 			err := json.Unmarshal(msg, &msdata)
 			if err != nil {
 				errors.New("Unable to unmarshal msgData")
 			}
-
 			switch mt {
 			case websocket.TextMessage:
 				if msdata.Event == "old_messages" {
@@ -137,15 +134,16 @@ func StartServer(red *redis.Pool) {
 							Value: msdata.Data,
 						},
 					})
+
 					if err != nil {
 						fmt.Printf("Unable to save message firestore %s", err)
 					}
-					rr.Broadcast([]byte(msdata.Data))
-					rw.Publish([]byte(msdata.Data), roomId)
+					rw.Publish([]byte(msdata.Data))
 				}
 
 			default:
-				rw.Publish([]byte("Unknown message"), roomId)
+				rw.Publish([]byte("Disconnect command or invalid event"))
+				break
 			}
 		}
 

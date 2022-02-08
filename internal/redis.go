@@ -60,12 +60,14 @@ func (rr *redisReceiver) Wait(_ time.Time) error {
 
 func (rr *redisReceiver) Run(roomID string) error {
 	l := log.WithField("channel", rr.roomID)
+	fmt.Println("Here1")
 	conn := rr.pool.Get()
 	defer conn.Close()
 	psc := redis.PubSubConn{Conn: conn}
 	psc.Subscribe(roomID)
 	go rr.ConnHandler()
 	for {
+		fmt.Println("still Here1")
 		switch v := psc.Receive().(type) {
 		case redis.Message:
 			l.WithField("message", string(v.Data)).Info("Redis Message Received")
@@ -139,7 +141,6 @@ func RemoveConn(conns []*websocket.Conn, remove *websocket.Conn) []*websocket.Co
 
 type redisWriter struct {
 	pool     *redis.Pool
-	roomId   string
 	messages chan []byte
 }
 
@@ -155,7 +156,7 @@ func (rw *redisWriter) Run(roomId string) error {
 	defer conn.Close()
 	for data := range rw.messages {
 		if err := writeToRedis(conn, data, roomId); err != nil {
-			rw.Publish(data, roomId) // attempt to redeliver later
+			rw.Publish(data) // attempt to redeliver later
 			return err
 		}
 	}
@@ -173,7 +174,8 @@ func writeToRedis(conn redis.Conn, data []byte, roomId string) error {
 }
 
 // publish to Redis via channel.
-func (rw *redisWriter) Publish(data []byte, roomId string) {
+func (rw *redisWriter) Publish(data []byte) {
+	fmt.Println("Here 2")
 	rw.messages <- data
-	rw.roomId = roomId
+	fmt.Println("Here 3")
 }

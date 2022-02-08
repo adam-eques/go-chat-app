@@ -11,10 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	Channel = "chat"
-)
-
 var (
 	log                              = logrus.WithField("cmd", "chat-app")
 	waitingMessage, availableMessage []byte
@@ -40,8 +36,8 @@ func init() {
 }
 
 type redisReceiver struct {
-	pool *redis.Pool
-
+	pool           *redis.Pool
+	roomID         string
 	messages       chan []byte
 	newConnections chan *websocket.Conn
 	rmConnections  chan *websocket.Conn
@@ -62,12 +58,12 @@ func (rr *redisReceiver) Wait(_ time.Time) error {
 	return nil
 }
 
-func (rr *redisReceiver) Run() error {
-	l := log.WithField("channel", Channel)
+func (rr *redisReceiver) Run(roomID string) error {
+	l := log.WithField("channel", rr.roomID)
 	conn := rr.pool.Get()
 	defer conn.Close()
 	psc := redis.PubSubConn{Conn: conn}
-	psc.Subscribe(Channel)
+	psc.Subscribe(roomID)
 	go rr.ConnHandler()
 	for {
 		switch v := psc.Receive().(type) {
@@ -76,9 +72,10 @@ func (rr *redisReceiver) Run() error {
 			rr.Broadcast(v.Data)
 		case redis.Subscription:
 			l.WithFields(logrus.Fields{
-				"kind":  v.Kind,
-				"count": v.Count,
-			}).Println("Redis Subscription Received")
+				"kind":   v.Kind,
+				"count":  v.Count,
+				"roomID": roomID,
+			}).Println("Redis Subscription Received to %v", roomID)
 		case error:
 			return errors.Wrap(v, "Error while subscribed to Redis channel")
 		default:
@@ -142,6 +139,7 @@ func RemoveConn(conns []*websocket.Conn, remove *websocket.Conn) []*websocket.Co
 
 type redisWriter struct {
 	pool     *redis.Pool
+	roomId   string
 	messages chan []byte
 }
 
@@ -152,21 +150,20 @@ func NewRedisWriter(pool *redis.Pool) redisWriter {
 	}
 }
 
-func (rw *redisWriter) Run() error {
+func (rw *redisWriter) Run(roomId string) error {
 	conn := rw.pool.Get()
 	defer conn.Close()
-
 	for data := range rw.messages {
-		if err := writeToRedis(conn, data); err != nil {
-			rw.Publish(data) // attempt to redeliver later
+		if err := writeToRedis(conn, data, roomId); err != nil {
+			rw.Publish(data, roomId) // attempt to redeliver later
 			return err
 		}
 	}
 	return nil
 }
 
-func writeToRedis(conn redis.Conn, data []byte) error {
-	if err := conn.Send("PUBLISH", Channel, data); err != nil {
+func writeToRedis(conn redis.Conn, data []byte, roomId string) error {
+	if err := conn.Send("PUBLISH", roomId, data); err != nil {
 		return errors.Wrap(err, "Unable to publish message to Redis")
 	}
 	if err := conn.Flush(); err != nil {
@@ -176,6 +173,7 @@ func writeToRedis(conn redis.Conn, data []byte) error {
 }
 
 // publish to Redis via channel.
-func (rw *redisWriter) Publish(data []byte) {
+func (rw *redisWriter) Publish(data []byte, roomId string) {
 	rw.messages <- data
+	rw.roomId = roomId
 }

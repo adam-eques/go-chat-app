@@ -46,50 +46,15 @@ func main() {
 	redisHost := os.Getenv("REDISHOST")
 	redisPort := os.Getenv("REDISPORT")
 	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
-	redisURL := fmt.Sprintf("redis://%s:%s", redisHost, redisPort)
-	fmt.Println(redisURL)
+
+	// redisURL := fmt.Sprintf("redis://%s:%s", redisHost, redisPort)
+
 	const maxconnections = 10
 	redisPool := &redis.Pool{
 		MaxIdle: maxconnections,
 		Dial:    func() (redis.Conn, error) { return redis.Dial("tcp", redisAddr) },
 	}
-	// //	redisPool, err := redigo.NewRedisPoolFromURL(redisURL)
-	// if err != nil {
-	// 	fmt.Println("Connectionpool returned successufull")
-	// 	log.WithField("url", redisURL).Fatal("Unable to create Redis pool")
-	// }
 
-	// go func() {
-	// 	for {
-	// 		waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, rr.Wait)
-	// 		if !waited || err != nil {
-	// 			fmt.Println(err)
-	// 			log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
-	// 		}
-	// 		rr.Broadcast(availableMessage)
-	// 		err = rr.Run()
-	// 		fmt.Println("till here")
-	// 		if err == nil {
-	// 			break
-	// 		}
-	// 		log.Error(err)
-	// 		fmt.Println("finally connected")
-	// 	}
-	// }()
-
-	// go func() {
-	// 	for {
-	// 		waited, err := redigo.WaitForAvailability(redisURL, waitTimeout, nil)
-	// 		if !waited || err != nil {
-	// 			log.WithFields(logrus.Fields{"waitTimeout": waitTimeout, "err": err}).Fatal("Redis not available by timeout!")
-	// 		}
-	// 		err = rw.Run()
-	// 		if err == nil {
-	// 			break
-	// 		}
-	// 		log.Error(err)
-	// 	}
-	// }()
 	fmt.Println("Starting the server")
 	internal.StartServer(redisPool)
 }

@@ -1,4 +1,4 @@
-module github.com/midepeter/chat-app
+module github.com/acentior/chat-app
 
 go 1.17
 

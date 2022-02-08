@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/acentior/chat-app/internal"
 	"github.com/gomodule/redigo/redis"
 	"github.com/heroku/x/hredis/redigo"
 	"github.com/joho/godotenv"
-	"github.com/midepeter/chat-app/internal"
 	"github.com/sirupsen/logrus"
 )
 

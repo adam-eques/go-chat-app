@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"firebase.google.com/go/auth"
+	"github.com/acentior/chat-app/firebase"
 	"github.com/gofiber/fiber/v2"
 	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/gofiber/template/html"
 	"github.com/gofiber/websocket/v2"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/gomodule/redigo/redis"
-	"github.com/midepeter/chat-app/firebase"
 	"google.golang.org/api/iterator"
 )
 
@@ -79,9 +79,8 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 
 	app.Post("/createRoom", createRoom)
 
-	//the ws/:roomID set up a websocket connection to a specific roomID
+	// the ws/:roomID set up a websocket connection to a specific roomID
 	app.Get("/ws/:roomID", websocket.New(func(c *websocket.Conn) {
-
 		var (
 			mt  int
 			msg []byte
@@ -109,7 +108,7 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 			switch mt {
 			case websocket.TextMessage:
 				if msdata.Event == "old_messages" {
-					var oldMsgData MsgData
+					// var oldMsgData MsgData
 					doc, err := f.Client.Collection("chat-app").Doc(roomId).Get(context.Background())
 					if err != nil {
 						errors.New("unable to fetch previous room messages")
@@ -117,19 +116,15 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 
 					eleMap := doc.Data()
 
-					var prevmessages []string
-					for i, v := range eleMap {
-						prevmessages = append(prevmessages, v.(string))
-						fmt.Printf("This message sent by %v was %s", i, v)
-					}
-					for _, j := range prevmessages {
-						oldMsgData.Data = j
-						c.WriteMessage(mt, []byte(oldMsgData.Data))
+					for _, j := range eleMap {
+						c.WriteMessage(mt, []byte(j.(string)))
 					}
 				}
 
 				if msdata.Event == "new_messages" {
-					_, err = f.Client.Collection("chat-app").Doc(roomId).Set(ctx, msdata.Data)
+					_, err = f.Client.Collection("chat-app").Doc(roomId).Set(ctx, map[string]string{
+						"msg": msdata.Data,
+					})
 					if err != nil {
 						fmt.Printf("Unable to save message firestore %s", err)
 					}
@@ -161,7 +156,7 @@ type Room struct {
 
 var rooms []Room
 
-//This function is to get the list of all rooms
+// This function is to get the list of all rooms
 func fetchRooms(c *fiber.Ctx) error {
 	f := firebase.NewFirestore()
 
@@ -185,7 +180,7 @@ func fetchRooms(c *fiber.Ctx) error {
 	})
 }
 
-//CreateRoom route created new room and creates a by creating a doc for in the firstore db
+// CreateRoom route created new room and creates a by creating a doc for in the firstore db
 func createRoom(c *fiber.Ctx) error {
 	f := firebase.NewFirestore()
 
@@ -202,7 +197,7 @@ func createRoom(c *fiber.Ctx) error {
 	return c.SendString("New room created successfully")
 }
 
-//Handles the sign up function of the mobile app
+// Handles the sign up function of the mobile app
 func handleSignup(c *fiber.Ctx) error {
 	a := firebase.NewFirebaseAuth()
 	var user User
@@ -224,13 +219,13 @@ func handleSignup(c *fiber.Ctx) error {
 	return nil
 }
 
-//ID token received from front end generated from thee firebase
+// ID token received from front end generated from thee firebase
 type IdToken struct {
 	Token string `json:"token" form:"token"`
 }
 
-//This is to handle autthentication and aslo generates a JWT token which is passed to every
-//request that is protected and requires authorization
+// This is to handle autthentication and aslo generates a JWT token which is passed to every
+// request that is protected and requires authorization
 func handleAuth(c *fiber.Ctx) error {
 	a := firebase.NewFirebaseAuth()
 	var idToken IdToken

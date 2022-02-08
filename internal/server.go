@@ -2,22 +2,33 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"firebase.google.com/go/auth"
 	"github.com/gofiber/fiber/v2"
+	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/gofiber/template/html"
 	"github.com/gofiber/websocket/v2"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/gomodule/redigo/redis"
 	"github.com/midepeter/chat-app/firebase"
-	uuid "github.com/nu7hatch/gouuid"
+	"google.golang.org/api/iterator"
 )
+
+type MsgData struct {
+	Event string
+	Data  string
+}
 
 func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 	f := firebase.NewFirestore()
+
+	var msdata MsgData
 
 	http_port := os.Getenv("PORT")
 	fmt.Println(http_port)
@@ -40,29 +51,43 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 	app.Static("/", "./static")
 	app.Get("/Signup", handleSignup)
 	app.Get("/", func(c *fiber.Ctx) error {
-		c.Render("index", nil)
-		return nil
+		return c.Render("index", nil)
 	})
-	app.Get("/chat", func(c *fiber.Ctx) error {
-		c.Render("chat-app", fiber.Map{
-			"User": "olumide",
-		})
-		return nil
-	})
-	app.Post("/login", handleLogin)
-	app.Get("/retrieve", handleRetrieve)
-	app.Post("/createRoom", createRoom)
-	app.Post("/joinRoom", joinRoom)
-	app.Get("/fetch", fetchAllRooms)
+	app.Post("/auth", handleAuth)
 
-	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
+	app.Use(jwtware.New(jwtware.Config{
+		SigningKey: []byte("secret"),
+	}))
+
+	app.Use(func(c *fiber.Ctx) error {
+		token := c.Locals("user").(*jwt.Token)
+		claims := token.Claims.(jwt.MapClaims)
+		uid := claims["uid"].(string)
+
+		a := firebase.NewFirebaseAuth()
+		user, err := a.Client.GetUser(context.Background(), uid)
+		if err != nil {
+			return c.SendStatus(fiber.ErrBadGateway.Code)
+		}
+
+		c.Locals("user", user)
+
+		return c.Next()
+	})
+
+	app.Get("/rooms", fetchRooms)
+
+	app.Post("/createRoom", createRoom)
+
+	//the ws/:roomID set up a websocket connection to a specific roomID
+	app.Get("/ws/:roomID", websocket.New(func(c *websocket.Conn) {
 
 		var (
 			mt  int
 			msg []byte
 			err error
 		)
-		//roomId := c.Params("room_id")
+		roomId := c.Params("roomID")
 
 		rr.Register(c)
 
@@ -76,28 +101,44 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 				log.Println("Unknown message")
 			}
 
+			err := json.Unmarshal(msg, &msdata)
+			if err != nil {
+				errors.New("Unable to unmarshal msgData")
+			}
+
 			switch mt {
 			case websocket.TextMessage:
-				storemsg := Message{
-					User: c.Params("id"),
-					Data: msg,
-				}
-				message := "Echo: " + string(msg)
-				c.WriteMessage(mt, []byte(message))
+				if msdata.Event == "old_messages" {
+					var oldMsgData MsgData
+					doc, err := f.Client.Collection("chat-app").Doc(roomId).Get(context.Background())
+					if err != nil {
+						errors.New("unable to fetch previous room messages")
+					}
 
-				_, err := f.Client.Collection("chat-app").Doc("messages").Set(ctx, storemsg)
-				if err != nil {
-					fmt.Println("Unable to save message firestore")
+					eleMap := doc.Data()
+
+					var prevmessages []string
+					for i, v := range eleMap {
+						prevmessages = append(prevmessages, v.(string))
+						fmt.Printf("This message sent by %v was %s", i, v)
+					}
+					for _, j := range prevmessages {
+						oldMsgData.Data = j
+						c.WriteMessage(mt, []byte(oldMsgData.Data))
+					}
 				}
 
-				if err != nil {
-					fmt.Println("Unable to add message to firestore")
+				if msdata.Event == "new_messages" {
+					_, err = f.Client.Collection("chat-app").Doc(roomId).Set(ctx, msdata.Data)
+					if err != nil {
+						fmt.Printf("Unable to save message firestore %s", err)
+					}
+
+					rw.Publish([]byte(msdata.Data))
 				}
-				rw.Publish(msg)
 			default:
 				rw.Publish([]byte("Unknown message"))
 			}
-
 		}
 
 		rr.DeRegister(c)
@@ -113,89 +154,63 @@ type User struct {
 }
 
 type Room struct {
-	Id   string
-	Name string
-	User []*websocket.Conn
+	Id    string
+	Name  string
+	Users []*websocket.Conn
 }
 
 var rooms []Room
 
-func NewRoom(name string) *Room {
-	u, err := uuid.NewV4()
-	if err != nil {
-		fmt.Println("return err")
-	}
-	return &Room{
-		Id:   u.String(),
-		Name: name,
-	}
-}
-
 //This function is to get the list of all rooms
-func fetchAllRooms(c *fiber.Ctx) error {
+func fetchRooms(c *fiber.Ctx) error {
 	f := firebase.NewFirestore()
+
 	docItr := f.Client.Collection("chat-app").Documents(context.Background())
 
-	docs, err := docItr.GetAll()
-	if err != nil {
-		fmt.Errorf("There was an error fething all documents from firestore %s", err)
-		return err
+	for {
+		doc, err := docItr.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+		rooms = append(rooms, Room{
+			Id: doc.Ref.ID,
+		})
 	}
-	user := c.Body()
-	fmt.Println(docs)
-	log.Println(user)
-	c.Render("chatroooms", fiber.Map{
-		//"User": string(user),
-		//"Docs": docs,
+	return c.JSON(fiber.Map{
+		"rooms": rooms,
 	})
-	return nil
 }
 
-//createRoom initializes a new room where other users can join in to chat
+//CreateRoom route created new room and creates a by creating a doc for in the firstore db
 func createRoom(c *fiber.Ctx) error {
 	f := firebase.NewFirestore()
 
 	name := c.Body()
 
 	doc := f.Client.Collection("chat-app").NewDoc()
+
 	doc.ID = string(name)
-	fmt.Printf("A new room was successfully created %s", doc.ID)
-	return nil
-}
 
-func joinRoom(c *fiber.Ctx) error {
-	a := firebase.NewFirebaseAuth()
-	var idToken IdToken
-	if err := c.BodyParser(&idToken); err != nil {
-		fmt.Println(err)
-		return c.SendStatus(fiber.StatusUnauthorized)
-	}
-
-	token, err := a.Client.VerifyIDToken(context.Background(), idToken.Token)
-	if err != nil {
-		fmt.Printf("Was unable to verify id token %v", err)
-		return c.SendStatus(fiber.StatusUnauthorized)
-	}
-
-	uid := token.UID
-	user, err := a.Client.GetUser(context.Background(), uid)
-	if err != nil {
-		fmt.Println(err)
-		return c.SendStatus(fiber.StatusUnauthorized)
-	}
-
-	c.Render("chat-app", fiber.Map{
-		"User": user,
+	rooms = append(rooms, Room{
+		Id: doc.ID,
 	})
-	return nil
+
+	return c.SendString("New room created successfully")
 }
 
+//Handles the sign up function of the mobile app
 func handleSignup(c *fiber.Ctx) error {
 	a := firebase.NewFirebaseAuth()
 	var user User
+
 	if err := c.BodyParser(&user); err != nil {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+
 	params := (&auth.UserToCreate{}).
 		Email(user.Username).
 		EmailVerified(false).
@@ -205,18 +220,21 @@ func handleSignup(c *fiber.Ctx) error {
 	if err != nil {
 		fmt.Errorf("Unable to create user %v", err)
 	}
+
 	return nil
 }
 
+//ID token received from front end generated from thee firebase
 type IdToken struct {
 	Token string `json:"token" form:"token"`
 }
 
-func handleLogin(c *fiber.Ctx) error {
+//This is to handle autthentication and aslo generates a JWT token which is passed to every
+//request that is protected and requires authorization
+func handleAuth(c *fiber.Ctx) error {
 	a := firebase.NewFirebaseAuth()
 	var idToken IdToken
 	if err := c.BodyParser(&idToken); err != nil {
-		fmt.Println(err)
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
@@ -229,28 +247,20 @@ func handleLogin(c *fiber.Ctx) error {
 	uid := token.UID
 	user, err := a.Client.GetUser(context.Background(), uid)
 	if err != nil {
-		fmt.Println(err)
+		return c.SendStatus(fiber.ErrBadGateway.Code)
+	}
+
+	claims := jwt.MapClaims{
+		"uid":   uid,
+		"email": user.Email,
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	t, err := jwtToken.SignedString([]byte("secret"))
+	if err != nil {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
-
-	fmt.Println(user)
-
-	c.Redirect("/fetch")
-	return nil
-}
-
-func handleRetrieve(c *fiber.Ctx) error {
-	f := firebase.NewFirestore()
-
-	doc, err := f.Client.Collection("chat-app").Doc("messages").Get(context.Background())
-	if err != nil {
-		return errors.New("Could not retrieve document")
-	}
-
-	eleMap := doc.Data()
-	for i, v := range eleMap {
-		fmt.Printf("This message sent by %v was %s", i, v)
-	}
-	fmt.Println(eleMap)
-	return nil
+	return c.JSON(fiber.Map{"token": t})
 }

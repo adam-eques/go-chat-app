@@ -71,7 +71,7 @@ function handleSubmit(event) {
       if (user) {
         user.getIdToken().then((token) => {
           tokenInput.value = token;
-          submitButton.click();
+          // submitButton.click();
         });
       }
     });

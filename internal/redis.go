@@ -60,14 +60,12 @@ func (rr *redisReceiver) Wait(_ time.Time) error {
 
 func (rr *redisReceiver) Run(roomID string) error {
 	l := log.WithField("channel", rr.roomID)
-	fmt.Println("Here1")
 	conn := rr.pool.Get()
 	defer conn.Close()
 	psc := redis.PubSubConn{Conn: conn}
 	psc.Subscribe(roomID)
 	go rr.ConnHandler()
 	for {
-		fmt.Println("still Here1")
 		switch v := psc.Receive().(type) {
 		case redis.Message:
 			l.WithField("message", string(v.Data)).Info("Redis Message Received")
@@ -175,7 +173,5 @@ func writeToRedis(conn redis.Conn, data []byte, roomId string) error {
 
 // publish to Redis via channel.
 func (rw *redisWriter) Publish(data []byte) {
-	fmt.Println("Here 2")
 	rw.messages <- data
-	fmt.Println("Here 3")
 }

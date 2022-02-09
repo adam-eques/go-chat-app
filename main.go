@@ -43,14 +43,15 @@ func main() {
 	if err != nil {
 		errors.New("couldnt load environment variables")
 	}
-	redisIP := os.Getenv("REDIS_IP")
-
-	// redisURL := fmt.Sprintf("redis://%s:%s", redisHost, redisPort)
+	// redisIP := os.Getenv("REDIS_IP")
+	redisHost := os.Getenv("REDISHOST")
+	redisPort := os.Getenv("REDISPORT")
+	redisURL := fmt.Sprintf("%s:%s", redisHost, redisPort)
 
 	const maxconnections = 10
 	redisPool := &redis.Pool{
 		MaxIdle: maxconnections,
-		Dial:    func() (redis.Conn, error) { return redis.Dial("tcp", redisIP) },
+		Dial:    func() (redis.Conn, error) { return redis.Dial("tcp", redisURL) },
 	}
 
 	fmt.Println("Starting the server")

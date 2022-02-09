@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
 	"github.com/acentior/chat-app/firebase"
 	"github.com/gofiber/fiber/v2"
@@ -25,6 +24,8 @@ type MsgData struct {
 	Event string `json:"event"`
 	Data  string `json:"data"`
 }
+
+var messages = make(map[string]string)
 
 func StartServer(red *redis.Pool) {
 	f := firebase.NewFirestore()
@@ -127,22 +128,20 @@ func StartServer(red *redis.Pool) {
 					}
 				}
 
-				if msdata.Event == "new_messages" {
-					_, err = f.Client.Collection("chat-app").Doc(roomId).Update(ctx, []firestore.Update{
-						{
-							Path:  "msg",
-							Value: msdata.Data,
-						},
-					})
-
+				if msdata.Event == "new_message" {
+					messages[time.Now().Local().String()] = msdata.Data
+					fmt.Println("messages", messages)
+					_, err = f.Client.Collection("chat-app").Doc(roomId).Set(ctx, messages)
 					if err != nil {
 						fmt.Printf("Unable to save message firestore %s", err)
 					}
 					rw.Publish([]byte(msdata.Data))
 				}
+				// case websocket.Cl:
 
+				// rw.Publish([]byte("websocket disconnected"))
 			default:
-				rw.Publish([]byte("Disconnect command or invalid event"))
+				rw.Publish([]byte("Invalid command"))
 				break
 			}
 		}

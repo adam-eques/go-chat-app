@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"time"
 
@@ -22,14 +21,13 @@ import (
 )
 
 type MsgData struct {
-	Event  string `json:"event"`
-	RoomId string `json:"room_id"`
-	Data   string `json:"data"`
+	Event string `json:"event"`
+	Data  string `json:"data"`
 }
 
 var messages = make(map[string]string)
 
-func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
+func StartServer(red *redis.Pool) {
 	f := firebase.NewFirestore()
 
 	var msdata MsgData
@@ -90,8 +88,14 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 			msg []byte
 			err error
 		)
+		rr := NewRedisReceiver(red)
+
+		rw := NewRedisWriter(red)
 
 		roomId := c.Params("roomID")
+		go rr.Run(roomId)
+
+		go rw.Run(roomId)
 
 		rr.Register(c)
 
@@ -131,10 +135,13 @@ func StartServer(red *redis.Pool, rr redisReceiver, rw redisWriter) {
 					if err != nil {
 						fmt.Printf("Unable to save message firestore %s", err)
 					}
-					rw.Publish([]byte(msdata.Data), msdata.RoomId)
+					rw.Publish([]byte(msdata.Data))
 				}
+				// case websocket.Cl:
+
+				// rw.Publish([]byte("websocket disconnected"))
 			default:
-				rw.Publish([]byte("Invalid command"), msdata.RoomId)
+				rw.Publish([]byte("Invalid command"))
 				break
 			}
 		}
@@ -157,7 +164,7 @@ type Room struct {
 	Users []*websocket.Conn
 }
 
-var RoomsList []Room
+var rooms []Room
 
 // This function is to get the list of all rooms
 func fetchRooms(c *fiber.Ctx) error {
@@ -174,12 +181,12 @@ func fetchRooms(c *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-		RoomsList = append(RoomsList, Room{
+		rooms = append(rooms, Room{
 			Id: doc.Ref.ID,
 		})
 	}
 	return c.JSON(fiber.Map{
-		"rooms": RoomsList,
+		"rooms": rooms,
 	})
 }
 
@@ -193,7 +200,7 @@ func createRoom(c *fiber.Ctx) error {
 
 	doc.ID = string(name)
 
-	RoomsList = append(RoomsList, Room{
+	rooms = append(rooms, Room{
 		Id: doc.ID,
 	})
 

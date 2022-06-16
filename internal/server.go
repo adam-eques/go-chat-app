@@ -111,14 +111,14 @@ func StartServer(red *redis.Pool) {
 			}
 			err := json.Unmarshal(msg, &msdata)
 			if err != nil {
-				errors.New("Unable to unmarshal msgData")
+				log.Fatal(errors.New("Unable to unmarshal msgData"))
 			}
 			switch mt {
 			case websocket.TextMessage:
 				if msdata.Event == "old_messages" {
 					doc, err := f.Client.Collection("chat-app").Doc(roomId).Get(context.Background())
 					if err != nil {
-						errors.New("unable to fetch previous room messages")
+						log.Fatal(errors.New("unable to fetch previous room messages"))
 					}
 
 					eleMap := doc.Data()
@@ -223,13 +223,13 @@ func handleSignup(c *fiber.Ctx) error {
 
 	_, err := a.Client.CreateUser(context.Background(), params)
 	if err != nil {
-		fmt.Errorf("Unable to create user %v", err)
+		return fmt.Errorf("Unable to create user %v", err)
 	}
 
 	return nil
 }
 
-// ID token received from front end generated from thee firebase
+// ID token received from front end generated from the firebase
 type IdToken struct {
 	Token string `json:"token" form:"token"`
 }
